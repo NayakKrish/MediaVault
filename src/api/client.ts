@@ -1,4 +1,5 @@
-import type { Asset, AssetPage, AssetQuery, BulkResult } from '@/lib/types';
+import { isAbortError } from "@/lib/abort";
+import type { Asset, AssetPage, AssetQuery, BulkResult } from "@/lib/types";
 
 /**
  * Baseline client. It works on a good network and falls apart on a bad one.
@@ -13,22 +14,23 @@ import type { Asset, AssetPage, AssetQuery, BulkResult } from '@/lib/types';
 
 function toSearchParams(query: AssetQuery): string {
   const params = new URLSearchParams();
-  if (query.q) params.set('q', query.q);
-  if (query.status?.length) params.set('status', query.status.join(','));
-  if (query.kind?.length) params.set('kind', query.kind.join(','));
-  if (query.tag?.length) params.set('tag', query.tag.join(','));
-  if (query.collectionId) params.set('collectionId', query.collectionId);
-  if (query.owner) params.set('owner', query.owner);
-  if (query.sort) params.set('sort', query.sort);
-  if (query.limit) params.set('limit', String(query.limit));
-  if (query.cursor) params.set('cursor', query.cursor);
+  if (query.q) params.set("q", query.q);
+  if (query.status?.length)
+    params.set("status", [...query.status].sort().join(","));
+  if (query.kind?.length) params.set("kind", [...query.kind].sort().join(","));
+  if (query.tag?.length) params.set("tag", [...query.tag].sort().join(","));
+  if (query.collectionId) params.set("collectionId", query.collectionId);
+  if (query.owner) params.set("owner", query.owner);
+  if (query.sort) params.set("sort", query.sort);
+  if (query.limit) params.set("limit", String(query.limit));
+  if (query.cursor) params.set("cursor", query.cursor);
   return params.toString();
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,
-    headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
+    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
   });
   if (!res.ok) {
     let detail = res.statusText;
@@ -43,35 +45,119 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export function listAssets(query: AssetQuery): Promise<AssetPage> {
-  return request<AssetPage>(`/api/assets?${toSearchParams(query)}`);
+type InflightEntry = {
+  promise: Promise<unknown>;
+  controller: AbortController;
+  refs: number;
+};
+
+const inflightGets = new Map<string, InflightEntry>();
+
+/**
+ * Share one network call across concurrent identical GETs.
+ * Abort only fires when the last subscriber cancels — so StrictMode remounts
+ * and twin callers do not kill a still-needed request.
+ */
+function getDeduped<T>(path: string, signal?: AbortSignal): Promise<T> {
+  let entry = inflightGets.get(path);
+  if (!entry) {
+    const controller = new AbortController();
+    const promise = request<T>(path, { signal: controller.signal }).finally(
+      () => {
+        const current = inflightGets.get(path);
+        if (current?.promise === promise) inflightGets.delete(path);
+      },
+    );
+    entry = { promise, controller, refs: 0 };
+    inflightGets.set(path, entry);
+  }
+
+  entry.refs += 1;
+
+  return new Promise<T>((resolve, reject) => {
+    let settled = false;
+
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener("abort", onAbort);
+      entry!.refs -= 1;
+      fn();
+    };
+
+    const onAbort = () => {
+      finish(() => {
+        if (entry!.refs <= 0) {
+          inflightGets.delete(path);
+          entry!.controller.abort();
+        }
+        reject(new DOMException("Aborted", "AbortError"));
+      });
+    };
+
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+
+    signal?.addEventListener("abort", onAbort);
+
+    entry.promise.then(
+      (value) => finish(() => resolve(value as T)),
+      (err) =>
+        finish(() => {
+          if (signal?.aborted || isAbortError(err)) {
+            reject(new DOMException("Aborted", "AbortError"));
+            return;
+          }
+          reject(err);
+        }),
+    );
+  });
 }
 
-export function getAsset(id: string): Promise<Asset> {
-  return request<Asset>(`/api/assets/${id}`);
+export function listAssets(
+  query: AssetQuery,
+  signal?: AbortSignal,
+): Promise<AssetPage> {
+  return getDeduped<AssetPage>(`/api/assets?${toSearchParams(query)}`, signal);
 }
 
-export function getAssetsByIds(ids: string[]): Promise<{ items: Asset[]; missing: string[] }> {
+export function getAsset(id: string, signal?: AbortSignal): Promise<Asset> {
+  return getDeduped<Asset>(`/api/assets/${id}`, signal);
+}
+
+export function getAssetsByIds(
+  ids: string[],
+  signal?: AbortSignal,
+): Promise<{ items: Asset[]; missing: string[] }> {
   // Note: the endpoint rejects more than 25 ids per call.
-  return request(`/api/assets/batch?ids=${ids.join(',')}`);
+  return getDeduped(`/api/assets/batch?ids=${ids.join(",")}`, signal);
 }
 
 export function updateAsset(
   id: string,
   version: number,
-  patch: Partial<Pick<Asset, 'name' | 'status' | 'tags'>>,
+  patch: Partial<Pick<Asset, "name" | "status" | "tags">>,
+  signal?: AbortSignal,
 ): Promise<Asset> {
   return request<Asset>(`/api/assets/${id}`, {
-    method: 'PATCH',
+    method: "PATCH",
     body: JSON.stringify({ version, patch }),
+    signal,
   });
 }
 
-export function bulkSetStatus(ids: string[], status: Asset['status']): Promise<BulkResult> {
+export function bulkSetStatus(
+  ids: string[],
+  status: Asset["status"],
+  signal?: AbortSignal,
+): Promise<BulkResult> {
   // Note: the endpoint rejects more than 50 ids per call.
-  return request<BulkResult>('/api/assets/bulk-status', {
-    method: 'POST',
+  return request<BulkResult>("/api/assets/bulk-status", {
+    method: "POST",
     body: JSON.stringify({ ids, status }),
+    signal,
   });
 }
 

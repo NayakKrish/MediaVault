@@ -1,6 +1,6 @@
-import type { AssetStatus } from './types';
+import type { AssetKind, AssetStatus } from "./types";
 
-const UNITS = ['B', 'KB', 'MB', 'GB'];
+const UNITS = ["B", "KB", "MB", "GB"];
 
 export function formatBytes(bytes: number): string {
   let value = bytes;
@@ -13,9 +13,9 @@ export function formatBytes(bytes: number): string {
 }
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
+  day: "numeric",
+  month: "short",
+  year: "numeric",
 });
 
 export function formatDate(iso: string): string {
@@ -25,16 +25,26 @@ export function formatDate(iso: string): string {
 export function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 const STATUS_LABELS: Record<AssetStatus, string> = {
-  draft: 'Draft',
-  in_review: 'In review',
-  approved: 'Approved',
-  archived: 'Archived',
+  draft: "Draft",
+  in_review: "In review",
+  approved: "Approved",
+  archived: "Archived",
 };
 
 export function statusLabel(status: AssetStatus): string {
   return STATUS_LABELS[status];
+}
+
+const KIND_LABELS: Record<AssetKind, string> = {
+  image: "Image",
+  video: "Video",
+  document: "Document",
+};
+
+export function kindLabel(kind: AssetKind): string {
+  return KIND_LABELS[kind];
 }
