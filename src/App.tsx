@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AssetDetail } from "@/features/assets/AssetDetail";
 import { AssetFilters } from "@/features/assets/AssetFilters";
 import { AssetGrid } from "@/features/assets/AssetGrid";
@@ -8,6 +8,7 @@ import { serializeFilters } from "@/features/assets/urlQuery";
 import { useAssetFilters } from "@/hooks/useAssetFilters";
 import { useAssets } from "@/hooks/useAssets";
 import { useBulkStatus } from "@/hooks/useBulkStatus";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useSelection } from "@/hooks/useSelection";
 import type { Asset } from "@/lib/types";
 
@@ -26,6 +27,7 @@ export function App() {
   } = useAssetFilters();
 
   const [activeId, setActiveId] = useState<string | null>(null);
+  const online = useOnlineStatus();
 
   const {
     items,
@@ -40,6 +42,12 @@ export function App() {
     patchAssets,
     upsertAssets,
   } = useAssets(assetQuery);
+
+  const wasOnline = useRef(online);
+  useEffect(() => {
+    if (online && !wasOnline.current) retry();
+    wasOnline.current = online;
+  }, [online, retry]);
 
   const filterKey = serializeFilters(filters);
   const selection = useSelection(items, filterKey);
@@ -96,6 +104,12 @@ export function App() {
         sort={filters.sort}
         onSortChange={setSort}
       />
+
+      {!online && (
+        <p className="banner" role="status">
+          You’re offline — updates are paused. We’ll retry when you’re back.
+        </p>
+      )}
 
       <AssetFilters
         status={filters.status}

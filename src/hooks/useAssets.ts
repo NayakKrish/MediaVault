@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { listAssets } from "@/api/client";
 import { serializeFilters, type FilterState } from "@/features/assets/urlQuery";
 import { isAbortError } from "@/lib/abort";
+import { userMessage } from "@/lib/userMessage";
 import type { Asset, AssetQuery } from "@/lib/types";
 
 export const PAGE_LIMIT = 50;
@@ -100,7 +101,7 @@ export function useAssets(query: AssetQuery) {
           nextCursor: null,
           loading: false,
           loadingMore: false,
-          error: err instanceof Error ? err.message : "Something went wrong",
+          error: userMessage(err),
           loadMoreError: null,
         });
       });
@@ -142,8 +143,7 @@ export function useAssets(query: AssetQuery) {
         setState((s) => ({
           ...s,
           loadingMore: false,
-          loadMoreError:
-            err instanceof Error ? err.message : "Something went wrong",
+          loadMoreError: userMessage(err),
         }));
       });
   }, []);

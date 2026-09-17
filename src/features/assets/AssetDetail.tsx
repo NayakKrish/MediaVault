@@ -7,6 +7,7 @@ import {
   statusLabel,
 } from "@/lib/format";
 import { isApiError } from "@/lib/apiError";
+import { userMessage } from "@/lib/userMessage";
 import type { Asset, AssetStatus } from "@/lib/types";
 
 const STATUSES: AssetStatus[] = ["draft", "in_review", "approved", "archived"];
@@ -35,9 +36,7 @@ export function AssetDetail({ id, onClose, onSaved }: Props) {
     setThumbFailed(false);
     getAsset(id)
       .then(setAsset)
-      .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : "Load failed"),
-      );
+      .catch((err: unknown) => setError(userMessage(err)));
   }, [id]);
 
   async function setStatus(status: AssetStatus) {
@@ -58,14 +57,12 @@ export function AssetDetail({ id, onClose, onSaved }: Props) {
           const fresh = await getAsset(asset.id);
           setAsset(fresh);
           onSaved(fresh);
-          setConflict(
-            "This asset was edited elsewhere. Showing the latest version — apply the status again if you still want the change.",
-          );
-        } catch {
-          setError(err.message);
+          setConflict(userMessage(err));
+        } catch (refetchErr) {
+          setError(userMessage(refetchErr));
         }
       } else {
-        setError(err instanceof Error ? err.message : "Save failed");
+        setError(userMessage(err));
       }
     } finally {
       setSaving(false);

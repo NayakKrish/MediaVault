@@ -36,7 +36,7 @@ Roughly, and how you split it.
 | 8   | Cards are mouse-only `<div onClick>` — not focusable, no arrow/Enter/Space model, checkboxes have no accessible name tied to the asset                                            | `AssetGrid.tsx`                    | knowingly left              |
 | 9   | Thumbnails always requested; `hasThumbnail === false` yields a broken `<img>` (no placeholder, layout risk)                                                                       | `AssetGrid.tsx`, `AssetDetail.tsx` | fixed                       |
 | 10  | Detail `PATCH` success never updates the list (`handleSaved` is a no-op); bulk success also leaves stale status pills and clears selection even when `failed > 0`                 | `App.tsx`                          | fixed                       |
-| 11  | Client has no retries, ignores `Retry-After`, and collapses errors to a string — callers cannot tell 503/429 (retry) from 409/422 (don’t)                                         | `api/client.ts`                    | knowingly left              |
+| 11  | Client has no retries, ignores `Retry-After`, and collapses errors to a string — callers cannot tell 503/429 (retry) from 409/422 (don’t)                                         | `api/client.ts`                    | fixed                       |
 | 12  | Detail panel: opening/closing does not move or restore focus; Escape does not close; rapid id changes race the same way as the list                                               | `AssetDetail.tsx`                  | knowingly left              |
 
 ---
@@ -66,7 +66,7 @@ On `409 version_conflict` the detail panel **refetches** and updates the list ro
 
 **Retry and backoff policy**
 
-_(Task 4 — client still has no retries.)_
+Max **4** attempts (1 initial + 3 retries). Delay is `max(Retry-After, min(8000, 300 * 2^attempt + random(0..300)))` ms. `Retry-After` is honoured as delta-seconds or an HTTP-date (`retry-after` header). Retry only on structural `ApiError.status` in `{429, 503, 500}` or a network `TypeError`; never on `400`, `409`, `422`, `AbortError`, or offline. Offline is fail-fast (no retry loop, no write queue) — a banner pauses updates and `retry()` runs once on reconnect. GET dedupe shares the full retry chain so identical in-flight lists are one storm, not N. UI copy goes through `userMessage`, never raw `429: Too many requests…`. An `ErrorBoundary` wraps the app shell.
 
 **State placement and URL sync**
 
@@ -119,7 +119,7 @@ Screenshots in the repo are welcome — link them here.
 
 ## Trade-offs and cuts
 
-What you deliberately did not do, and what you would do with another day.
+Offline writes are detected and surfaced, not queued. A write queue would need durable storage, conflict replay against `version`, and a way to drop `legal_hold` / `400` without surprising the user — too much machinery for a session that already fails fast and retries the list on reconnect.
 
 ## Critique of the API
 

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { bulkSetStatus } from "@/api/client";
 import { chunk } from "@/lib/chunk";
 import { mapPool } from "@/lib/pool";
+import { userMessage } from "@/lib/userMessage";
 import type { Asset, AssetStatus, BulkResult } from "@/lib/types";
 
 export const BULK_CHUNK_SIZE = 50;
@@ -104,10 +105,7 @@ function mergeChunkOutcomes(
 
   for (const outcome of outcomes) {
     if (outcome.error || !outcome.result) {
-      const message =
-        outcome.error instanceof Error
-          ? outcome.error.message
-          : "The request did not complete.";
+      const message = userMessage(outcome.error);
       for (const id of outcome.chunk) {
         const prior = snap.get(id);
         failures.push({
