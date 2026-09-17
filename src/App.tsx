@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { bulkSetStatus } from "@/api/client";
 import { AssetDetail } from "@/features/assets/AssetDetail";
 import { AssetFilters } from "@/features/assets/AssetFilters";
@@ -29,7 +29,17 @@ export function App() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const { items, total, loading, error, retry } = useAssets(assetQuery);
+  const {
+    items,
+    total,
+    loading,
+    loadingMore,
+    error,
+    loadMoreError,
+    hasMore,
+    loadMore,
+    retry,
+  } = useAssets(assetQuery);
 
   const phase =
     loading && items.length === 0
@@ -40,27 +50,35 @@ export function App() {
           ? "empty"
           : "ready";
 
-  const summary = loading
-    ? "Loading…"
-    : error
-      ? "Failed to load"
-      : `${items.length} of ${total.toLocaleString()} shown`;
+  const summary =
+    loading && items.length === 0
+      ? "Loading…"
+      : error && items.length === 0
+        ? "Failed to load"
+        : `${items.length} of ${total.toLocaleString()} shown`;
 
-  function toggleSelect(id: string) {
+  const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  }
+  }, []);
+
+  const handleOpen = useCallback((id: string) => {
+    setActiveId(id);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    setActiveId(null);
+  }, []);
 
   async function applyBulkStatus(next: AssetStatus) {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
     setNotice(null);
     try {
-      // Sends every selected id in one call, which the API refuses above 50.
       const result = await bulkSetStatus(ids, next);
       setNotice(`${result.applied} updated, ${result.failed} failed.`);
       setSelectedIds(new Set());
@@ -114,16 +132,20 @@ export function App() {
           selectedIds={selectedIds}
           activeId={activeId}
           onToggleSelect={toggleSelect}
-          onOpen={setActiveId}
+          onOpen={handleOpen}
           phase={phase}
           errorMessage={error}
           onRetry={retry}
           onClearFilters={resetFilters}
+          hasMore={hasMore}
+          loadingMore={loadingMore}
+          loadMoreError={loadMoreError}
+          onLoadMore={loadMore}
         />
         {activeId && (
           <AssetDetail
             id={activeId}
-            onClose={() => setActiveId(null)}
+            onClose={handleClose}
             onSaved={handleSaved}
           />
         )}

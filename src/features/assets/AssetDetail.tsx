@@ -1,9 +1,14 @@
-import { useEffect, useState } from 'react';
-import { getAsset, thumbnailUrl, updateAsset } from '@/api/client';
-import { formatBytes, formatDate, formatDuration, statusLabel } from '@/lib/format';
-import type { Asset, AssetStatus } from '@/lib/types';
+import { useEffect, useState } from "react";
+import { getAsset, thumbnailUrl, updateAsset } from "@/api/client";
+import {
+  formatBytes,
+  formatDate,
+  formatDuration,
+  statusLabel,
+} from "@/lib/format";
+import type { Asset, AssetStatus } from "@/lib/types";
 
-const STATUSES: AssetStatus[] = ['draft', 'in_review', 'approved', 'archived'];
+const STATUSES: AssetStatus[] = ["draft", "in_review", "approved", "archived"];
 
 interface Props {
   id: string;
@@ -12,20 +17,24 @@ interface Props {
 }
 
 /**
- * Baseline detail panel. Loads on open, saves with no optimistic update,
- * surfaces failures as raw strings, and does nothing about focus.
+ * Overlay detail panel. Width is taken out of the layout flow so the grid
+ * scroll container does not shrink when this opens.
  */
 export function AssetDetail({ id, onClose, onSaved }: Props) {
   const [asset, setAsset] = useState<Asset | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [thumbFailed, setThumbFailed] = useState(false);
 
   useEffect(() => {
     setAsset(null);
     setError(null);
+    setThumbFailed(false);
     getAsset(id)
       .then(setAsset)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : 'Load failed'));
+      .catch((err: unknown) =>
+        setError(err instanceof Error ? err.message : "Load failed"),
+      );
   }, [id]);
 
   async function setStatus(status: AssetStatus) {
@@ -37,17 +46,21 @@ export function AssetDetail({ id, onClose, onSaved }: Props) {
       setAsset(updated);
       onSaved(updated);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed');
+      setError(err instanceof Error ? err.message : "Save failed");
     } finally {
       setSaving(false);
     }
   }
 
+  const showThumb = asset?.hasThumbnail && !thumbFailed;
+
   return (
     <aside className="panel">
       <div className="panel__head">
         <h2>Asset detail</h2>
-        <button onClick={onClose}>Close</button>
+        <button type="button" onClick={onClose}>
+          Close
+        </button>
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -55,7 +68,19 @@ export function AssetDetail({ id, onClose, onSaved }: Props) {
 
       {asset && (
         <div className="panel__body">
-          <img className="panel__thumb" src={thumbnailUrl(asset.id)} alt="" />
+          {showThumb ? (
+            <img
+              className="panel__thumb"
+              src={thumbnailUrl(asset.id)}
+              alt=""
+              onError={() => setThumbFailed(true)}
+            />
+          ) : (
+            <div
+              className="panel__thumb panel__thumb--missing"
+              aria-hidden="true"
+            />
+          )}
           <h3>{asset.name}</h3>
           <dl className="facts">
             <dt>Id</dt>
@@ -99,6 +124,7 @@ export function AssetDetail({ id, onClose, onSaved }: Props) {
             {STATUSES.map((status) => (
               <button
                 key={status}
+                type="button"
                 disabled={saving || status === asset.status}
                 onClick={() => setStatus(status)}
               >

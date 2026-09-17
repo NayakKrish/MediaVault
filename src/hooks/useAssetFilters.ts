@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DEFAULT_FILTERS,
   type FilterState,
@@ -8,6 +8,7 @@ import {
   serializeFilters,
 } from "@/features/assets/urlQuery";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { PAGE_LIMIT } from "@/hooks/useAssets";
 import type { AssetKind, AssetStatus } from "@/lib/types";
 
 /** Debounce for search + tag inputs. Long enough to coalesce keystrokes under the
@@ -111,21 +112,9 @@ export function useAssetFilters() {
     setFilters(DEFAULT_FILTERS);
   }, []);
 
-  // Cursor is React-only; drop it whenever the filter identity changes so we
-  // never reuse a cursor from a different query (stale_cursor).
-  const [cursor, setCursor] = useState<string | undefined>(undefined);
-  const filterKey = serializeFilters(filters);
-  const prevFilterKey = useRef(filterKey);
-  useEffect(() => {
-    if (prevFilterKey.current !== filterKey) {
-      prevFilterKey.current = filterKey;
-      setCursor(undefined);
-    }
-  }, [filterKey]);
-
   const assetQuery = useMemo(
-    () => filtersToAssetQuery(filters, { limit: 24, cursor }),
-    [filters, cursor],
+    () => filtersToAssetQuery(filters, { limit: PAGE_LIMIT }),
+    [filters],
   );
 
   return {
@@ -140,8 +129,6 @@ export function useAssetFilters() {
     toggleStatus,
     toggleKind,
     resetFilters,
-    cursor,
-    setCursor,
     assetQuery,
   };
 }
