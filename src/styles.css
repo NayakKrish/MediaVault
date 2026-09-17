@@ -137,6 +137,7 @@ button:disabled {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
   padding: 10px 16px;
   border-bottom: 1px solid var(--line);
 }
@@ -150,6 +151,20 @@ button:disabled {
 }
 .error {
   color: var(--danger);
+}
+.notice__list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+.notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.panel__notice {
+  border-bottom: none;
+  padding: 8px 0;
 }
 
 .content {

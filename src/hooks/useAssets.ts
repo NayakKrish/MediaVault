@@ -148,10 +148,38 @@ export function useAssets(query: AssetQuery) {
       });
   }, []);
 
+  const patchAssets = useCallback(
+    (
+      ids: string[],
+      patch: Partial<Pick<Asset, "status" | "name" | "tags">>,
+    ) => {
+      if (ids.length === 0) return;
+      const idSet = new Set(ids);
+      setState((s) => ({
+        ...s,
+        items: s.items.map((asset) =>
+          idSet.has(asset.id) ? { ...asset, ...patch } : asset,
+        ),
+      }));
+    },
+    [],
+  );
+
+  const upsertAssets = useCallback((assets: Asset[]) => {
+    if (assets.length === 0) return;
+    const byId = new Map(assets.map((asset) => [asset.id, asset]));
+    setState((s) => ({
+      ...s,
+      items: s.items.map((asset) => byId.get(asset.id) ?? asset),
+    }));
+  }, []);
+
   return {
     ...state,
     hasMore: Boolean(state.nextCursor),
     loadMore,
     retry: () => setReloadToken((n) => n + 1),
+    patchAssets,
+    upsertAssets,
   };
 }

@@ -18,7 +18,7 @@ interface Props {
   assets: Asset[];
   selectedIds: Set<string>;
   activeId: string | null;
-  onToggleSelect: (id: string) => void;
+  onToggleSelect: (id: string, shift?: boolean) => void;
   onOpen: (id: string) => void;
   phase?: "loading" | "error" | "empty" | "ready";
   errorMessage?: string | null;

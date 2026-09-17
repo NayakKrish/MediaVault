@@ -1,4 +1,5 @@
 import { isAbortError } from "@/lib/abort";
+import { ApiError } from "@/lib/apiError";
 import type { Asset, AssetPage, AssetQuery, BulkResult } from "@/lib/types";
 
 /**
@@ -33,14 +34,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
   });
   if (!res.ok) {
-    let detail = res.statusText;
+    let code = "http_error";
+    let message = res.statusText || `Request failed (${res.status})`;
     try {
       const body = await res.json();
-      detail = body?.error?.message ?? detail;
+      code = body?.error?.code ?? code;
+      message = body?.error?.message ?? message;
     } catch {
       /* response was not JSON */
     }
-    throw new Error(`${res.status}: ${detail}`);
+    throw new ApiError(res.status, code, message);
   }
   return res.json() as Promise<T>;
 }

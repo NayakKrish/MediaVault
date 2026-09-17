@@ -26,7 +26,7 @@ Roughly, and how you split it.
 
 | #   | Defect                                                                                                                                                                            | Where                              | Fixed / left / out of scope |
 | --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | --------------------------- |
-| 1   | Bulk update sends every selected id in one request; API rejects >50 (`400 too_many_ids`)                                                                                          | `App.tsx` `applyBulkStatus`        | knowingly left              |
+| 1   | Bulk update sends every selected id in one request; API rejects >50 (`400 too_many_ids`)                                                                                          | `App.tsx` `applyBulkStatus`        | fixed                       |
 | 2   | Search/filter race: in-flight `listAssets` is never aborted or sequenced, so a slow earlier response can overwrite a newer query                                                  | `useAssets.ts`                     | fixed                       |
 | 3   | Every keystroke fires a list request (no debounce/throttle) → burns the 80/10s rate limit and amplifies flakiness                                                                 | `App.tsx` → `useAssets`            | fixed                       |
 | 4   | Empty / loading / error are conflated: with `items=[]`, the grid always shows “Nothing matches…”, including on initial load and after a failed fetch (error banner + false empty) | `AssetGrid.tsx`, `App.tsx`         | fixed                       |
@@ -35,7 +35,7 @@ Roughly, and how you split it.
 | 7   | Any selection toggle re-renders every card (`selectedIds` Set + unmemoized list)                                                                                                  | `AssetGrid.tsx`                    | fixed                       |
 | 8   | Cards are mouse-only `<div onClick>` — not focusable, no arrow/Enter/Space model, checkboxes have no accessible name tied to the asset                                            | `AssetGrid.tsx`                    | knowingly left              |
 | 9   | Thumbnails always requested; `hasThumbnail === false` yields a broken `<img>` (no placeholder, layout risk)                                                                       | `AssetGrid.tsx`, `AssetDetail.tsx` | fixed                       |
-| 10  | Detail `PATCH` success never updates the list (`handleSaved` is a no-op); bulk success also leaves stale status pills and clears selection even when `failed > 0`                 | `App.tsx`                          | knowingly left              |
+| 10  | Detail `PATCH` success never updates the list (`handleSaved` is a no-op); bulk success also leaves stale status pills and clears selection even when `failed > 0`                 | `App.tsx`                          | fixed                       |
 | 11  | Client has no retries, ignores `Retry-After`, and collapses errors to a string — callers cannot tell 503/429 (retry) from 409/422 (don’t)                                         | `api/client.ts`                    | knowingly left              |
 | 12  | Detail panel: opening/closing does not move or restore focus; Escape does not close; rapid id changes race the same way as the list                                               | `AssetDetail.tsx`                  | knowingly left              |
 
@@ -60,7 +60,9 @@ Plain `fetch` with a small in-flight GET map (refcounted abort). Rejected React 
 
 **Optimistic updates and rollback**
 
-_(Task 3)_
+Bulk apply patches the list first, then `POST /api/assets/bulk-status` in **50-id chunks** with **3** in flight. Per-id `207` results keep successes (upsert server assets) and roll back only failures. `conflict` is retryable; `legal_hold` is listed and excluded from Retry. Undo re-applies each success’s prior status through the same chunk/pool path. Shift-click extends a contiguous range in loaded order; “Select all loaded” swaps one Set.
+
+On `409 version_conflict` the detail panel **refetches** and updates the list row instead of silently re-applying the click — a concurrent edit should not be overwritten. The user can apply again if they still want the change.
 
 **Retry and backoff policy**
 

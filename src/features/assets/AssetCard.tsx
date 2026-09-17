@@ -7,7 +7,7 @@ interface Props {
   asset: Asset;
   selected: boolean;
   active: boolean;
-  onToggleSelect: (id: string) => void;
+  onToggleSelect: (id: string, shift?: boolean) => void;
   onOpen: (id: string) => void;
 }
 
@@ -69,8 +69,14 @@ export const AssetCard = memo(function AssetCard({
         className="card__check"
         checked={selected}
         aria-label={`Select ${asset.name}`}
-        onClick={(e) => e.stopPropagation()}
-        onChange={() => onToggleSelect(asset.id)}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          onToggleSelect(asset.id, e.shiftKey);
+        }}
+        onChange={() => {
+          /* selection is handled in onClick so shift-click can extend a range */
+        }}
       />
     </div>
   );

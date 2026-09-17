@@ -6,6 +6,7 @@ import {
   formatDuration,
   statusLabel,
 } from "@/lib/format";
+import { isApiError } from "@/lib/apiError";
 import type { Asset, AssetStatus } from "@/lib/types";
 
 const STATUSES: AssetStatus[] = ["draft", "in_review", "approved", "archived"];
@@ -23,12 +24,14 @@ interface Props {
 export function AssetDetail({ id, onClose, onSaved }: Props) {
   const [asset, setAsset] = useState<Asset | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [conflict, setConflict] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
 
   useEffect(() => {
     setAsset(null);
     setError(null);
+    setConflict(null);
     setThumbFailed(false);
     getAsset(id)
       .then(setAsset)
@@ -41,12 +44,29 @@ export function AssetDetail({ id, onClose, onSaved }: Props) {
     if (!asset) return;
     setSaving(true);
     setError(null);
+    setConflict(null);
     try {
       const updated = await updateAsset(asset.id, asset.version, { status });
       setAsset(updated);
       onSaved(updated);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Save failed");
+      if (
+        isApiError(err) &&
+        (err.status === 409 || err.code === "version_conflict")
+      ) {
+        try {
+          const fresh = await getAsset(asset.id);
+          setAsset(fresh);
+          onSaved(fresh);
+          setConflict(
+            "This asset was edited elsewhere. Showing the latest version — apply the status again if you still want the change.",
+          );
+        } catch {
+          setError(err.message);
+        }
+      } else {
+        setError(err instanceof Error ? err.message : "Save failed");
+      }
     } finally {
       setSaving(false);
     }
@@ -64,6 +84,7 @@ export function AssetDetail({ id, onClose, onSaved }: Props) {
       </div>
 
       {error && <p className="error">{error}</p>}
+      {conflict && <p className="notice panel__notice">{conflict}</p>}
       {!asset && !error && <p className="muted">Loading…</p>}
 
       {asset && (
