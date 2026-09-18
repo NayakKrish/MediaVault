@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getAsset, thumbnailUrl, updateAsset } from "@/api/client";
 import {
   formatBytes,
@@ -6,6 +6,7 @@ import {
   formatDuration,
   statusLabel,
 } from "@/lib/format";
+import { isAbortError } from "@/lib/abort";
 import { isApiError } from "@/lib/apiError";
 import { userMessage } from "@/lib/userMessage";
 import type { Asset, AssetStatus } from "@/lib/types";
@@ -28,16 +29,36 @@ export function AssetDetail({ id, onClose, onSaved }: Props) {
   const [conflict, setConflict] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
     setAsset(null);
     setError(null);
     setConflict(null);
     setThumbFailed(false);
-    getAsset(id)
+    getAsset(id, controller.signal)
       .then(setAsset)
-      .catch((err: unknown) => setError(userMessage(err)));
+      .catch((err: unknown) => {
+        if (isAbortError(err) || controller.signal.aborted) return;
+        setError(userMessage(err));
+      });
+    return () => controller.abort();
   }, [id]);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+  }, [id]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   async function setStatus(status: AssetStatus) {
     if (!asset) return;
@@ -70,12 +91,18 @@ export function AssetDetail({ id, onClose, onSaved }: Props) {
   }
 
   const showThumb = asset?.hasThumbnail && !thumbFailed;
+  const titleId = "asset-detail-title";
 
   return (
-    <aside className="panel">
+    <aside
+      className="panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
       <div className="panel__head">
-        <h2>Asset detail</h2>
-        <button type="button" onClick={onClose}>
+        <h2 id={titleId}>Asset detail</h2>
+        <button ref={closeRef} type="button" onClick={onClose}>
           Close
         </button>
       </div>

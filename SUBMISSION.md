@@ -33,11 +33,11 @@ Roughly, and how you split it.
 | 5   | `nextCursor` is stored but never used — only the first page (~24) of up to 12.4k assets is reachable                                                                              | `useAssets.ts`, `App.tsx`          | fixed                       |
 | 6   | Grid mounts every asset it is given (no windowing); DOM/memory grow with scroll depth once pagination exists                                                                      | `AssetGrid.tsx`                    | fixed                       |
 | 7   | Any selection toggle re-renders every card (`selectedIds` Set + unmemoized list)                                                                                                  | `AssetGrid.tsx`                    | fixed                       |
-| 8   | Cards are mouse-only `<div onClick>` — not focusable, no arrow/Enter/Space model, checkboxes have no accessible name tied to the asset                                            | `AssetGrid.tsx`                    | knowingly left              |
+| 8   | Cards are mouse-only `<div onClick>` — not focusable, no arrow/Enter/Space model, checkboxes have no accessible name tied to the asset                                            | `AssetGrid.tsx`                    | fixed                       |
 | 9   | Thumbnails always requested; `hasThumbnail === false` yields a broken `<img>` (no placeholder, layout risk)                                                                       | `AssetGrid.tsx`, `AssetDetail.tsx` | fixed                       |
 | 10  | Detail `PATCH` success never updates the list (`handleSaved` is a no-op); bulk success also leaves stale status pills and clears selection even when `failed > 0`                 | `App.tsx`                          | fixed                       |
 | 11  | Client has no retries, ignores `Retry-After`, and collapses errors to a string — callers cannot tell 503/429 (retry) from 409/422 (don’t)                                         | `api/client.ts`                    | fixed                       |
-| 12  | Detail panel: opening/closing does not move or restore focus; Escape does not close; rapid id changes race the same way as the list                                               | `AssetDetail.tsx`                  | knowingly left              |
+| 12  | Detail panel: opening/closing does not move or restore focus; Escape does not close; rapid id changes race the same way as the list                                               | `AssetDetail.tsx`                  | fixed                       |
 
 ---
 
@@ -94,9 +94,11 @@ The first-page-only list hid it. Once cursor pagination was on, the cost was **m
 
 ## Accessibility
 
-- Keyboard model you implemented, in one paragraph.
-- How you tested it, including any screen reader.
-- Known gaps.
+The grid is a `role="grid"` with one roving `tabIndex={0}` cell (checkboxes are `tabIndex={-1}` so they are not extra stops). Arrow keys move in two dimensions from the current column count; Enter opens; Space toggles; Shift+arrows move and extend the same contiguous range as Shift+click. Opening the detail panel (`role="dialog"`) focuses Close; Escape or Close returns focus to the opened card, or to the grid if that id was filtered out. Result counts, bulk outcomes, and the offline banner use polite live regions; load/error use `role="alert"`. Search is debounced so the count does not announce per keystroke.
+
+Tested from the keyboard in Chromium (Tab into the grid, arrows, Space, Shift+arrows, Enter, Escape, Tab out of the dialog). I did not run a screen reader.
+
+Known gaps: the dialog is not a focus trap (Tab can leave — required). Off-screen virtualized cells are not in the accessibility tree until scrolled into view. I did not add Home/End/PageUp.
 
 ---
 

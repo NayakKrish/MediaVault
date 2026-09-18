@@ -7,8 +7,11 @@ interface Props {
   asset: Asset;
   selected: boolean;
   active: boolean;
+  focused: boolean;
+  colIndex: number;
   onToggleSelect: (id: string, shift?: boolean) => void;
   onOpen: (id: string) => void;
+  onCellFocus: (id: string) => void;
 }
 
 function AssetThumb({ asset }: { asset: Asset }) {
@@ -36,8 +39,11 @@ export const AssetCard = memo(function AssetCard({
   asset,
   selected,
   active,
+  focused,
+  colIndex,
   onToggleSelect,
   onOpen,
+  onCellFocus,
 }: Props) {
   if (import.meta.env.DEV && typeof window !== "undefined") {
     const w = window as Window & { __mvCardRenders?: number };
@@ -46,12 +52,18 @@ export const AssetCard = memo(function AssetCard({
 
   return (
     <div
+      role="gridcell"
+      data-asset-id={asset.id}
+      aria-colindex={colIndex}
+      aria-selected={selected}
+      tabIndex={focused ? 0 : -1}
       className={
         "card" +
         (selected ? " card--selected" : "") +
         (active ? " card--active" : "")
       }
       onClick={() => onOpen(asset.id)}
+      onFocus={() => onCellFocus(asset.id)}
     >
       <AssetThumb asset={asset} />
       <div className="card__body">
@@ -67,6 +79,7 @@ export const AssetCard = memo(function AssetCard({
       <input
         type="checkbox"
         className="card__check"
+        tabIndex={-1}
         checked={selected}
         aria-label={`Select ${asset.name}`}
         onClick={(e) => {

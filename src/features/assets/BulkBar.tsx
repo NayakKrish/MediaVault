@@ -78,7 +78,7 @@ export function BulkNoticeBanner({
   const canUndo = Object.keys(notice.undoById).length > 0;
 
   return (
-    <div className="notice" role="status">
+    <div className="notice" role="status" aria-live="polite">
       <p>
         {notice.applied === 0 && notice.failed === 0
           ? "Nothing to update."

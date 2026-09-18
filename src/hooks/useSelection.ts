@@ -45,7 +45,10 @@ export function useSelection(items: Asset[], resetKey: string) {
       return next;
     });
 
-    if (!shift) setAnchorId(id);
+    if (!shift) {
+      anchorRef.current = id;
+      setAnchorId(id);
+    }
   }, []);
 
   const selectAll = useCallback((ids: string[]) => {

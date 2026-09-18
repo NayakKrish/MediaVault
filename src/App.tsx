@@ -27,6 +27,8 @@ export function App() {
   } = useAssetFilters();
 
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [restoreFocusId, setRestoreFocusId] = useState<string | null>(null);
+  const lastOpenedId = useRef<string | null>(null);
   const online = useOnlineStatus();
 
   const {
@@ -80,11 +82,17 @@ export function App() {
         : `${items.length} of ${total.toLocaleString()} shown`;
 
   const handleOpen = useCallback((id: string) => {
+    lastOpenedId.current = id;
     setActiveId(id);
   }, []);
 
   const handleClose = useCallback(() => {
     setActiveId(null);
+    setRestoreFocusId(lastOpenedId.current);
+  }, []);
+
+  const handleRestoreFocusHandled = useCallback(() => {
+    setRestoreFocusId(null);
   }, []);
 
   const handleSaved = useCallback(
@@ -106,7 +114,7 @@ export function App() {
       />
 
       {!online && (
-        <p className="banner" role="status">
+        <p className="banner" role="status" aria-live="polite">
           You’re offline — updates are paused. We’ll retry when you’re back.
         </p>
       )}
@@ -154,6 +162,8 @@ export function App() {
           loadingMore={loadingMore}
           loadMoreError={loadMoreError}
           onLoadMore={loadMore}
+          restoreFocusId={restoreFocusId}
+          onRestoreFocusHandled={handleRestoreFocusHandled}
         />
         {activeId && (
           <AssetDetail
