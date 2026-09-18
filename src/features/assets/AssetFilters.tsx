@@ -24,7 +24,7 @@ export function AssetFilters({
       <fieldset className="filters__group">
         <legend className="filters__legend">Status</legend>
         {STATUSES.map((s) => (
-          <label key={s}>
+          <label key={s} className="chip">
             <input
               type="checkbox"
               checked={status.includes(s)}
@@ -37,7 +37,7 @@ export function AssetFilters({
       <fieldset className="filters__group">
         <legend className="filters__legend">Kind</legend>
         {KINDS.map((k) => (
-          <label key={k}>
+          <label key={k} className="chip">
             <input
               type="checkbox"
               checked={kind.includes(k)}
@@ -47,7 +47,7 @@ export function AssetFilters({
           </label>
         ))}
       </fieldset>
-      <span className="muted" aria-live="polite">
+      <span className="filters__summary" aria-live="polite">
         {summary}
       </span>
     </div>

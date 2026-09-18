@@ -28,7 +28,7 @@ export function TopBar({
 }: Props) {
   return (
     <header className="topbar">
-      <h1>MediaVault</h1>
+      <h1 className="brand">MediaVault</h1>
       <input
         className="search"
         type="search"
@@ -46,6 +46,7 @@ export function TopBar({
         aria-label="Filter by tags"
       />
       <select
+        className="sort"
         value={sort}
         onChange={(e) => onSortChange(e.target.value as FilterState["sort"])}
         aria-label="Sort assets"

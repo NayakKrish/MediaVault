@@ -9,6 +9,7 @@ import {
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { AssetCard } from "@/features/assets/AssetCard";
+import { AssetGridSkeleton } from "@/features/assets/AssetGridSkeleton";
 import { useElementSize } from "@/hooks/useElementSize";
 import { useGridKeyboard } from "@/hooks/useGridKeyboard";
 import type { Asset } from "@/lib/types";
@@ -57,12 +58,14 @@ function StatusPane({
   children,
   role,
   live,
+  className = "empty",
   restoreFocusId,
   onRestoreFocusHandled,
 }: {
   children: ReactNode;
   role?: "status" | "alert";
   live?: "polite";
+  className?: string;
   restoreFocusId?: string | null;
   onRestoreFocusHandled?: () => void;
 }) {
@@ -75,7 +78,13 @@ function StatusPane({
   }, [restoreFocusId, onRestoreFocusHandled]);
 
   return (
-    <div ref={ref} className="empty" role={role} aria-live={live} tabIndex={-1}>
+    <div
+      ref={ref}
+      className={className}
+      role={role}
+      aria-live={live}
+      tabIndex={-1}
+    >
       {children}
     </div>
   );
@@ -101,12 +110,14 @@ export function AssetGrid({
   if (phase === "loading") {
     return (
       <StatusPane
+        className="skeleton-wrap"
         role="status"
         live="polite"
         restoreFocusId={restoreFocusId}
         onRestoreFocusHandled={onRestoreFocusHandled}
       >
-        <p className="muted">Loading assets…</p>
+        <p className="sr-only">Loading assets…</p>
+        <AssetGridSkeleton />
       </StatusPane>
     );
   }
@@ -114,15 +125,18 @@ export function AssetGrid({
   if (phase === "error") {
     return (
       <StatusPane
+        className="empty empty--error"
         role="alert"
         restoreFocusId={restoreFocusId}
         onRestoreFocusHandled={onRestoreFocusHandled}
       >
-        <p>Couldn’t load assets.</p>
-        <p className="muted">{errorMessage ?? "Something went wrong."}</p>
+        <p className="empty__title">Couldn’t load assets</p>
+        <p className="muted">
+          {errorMessage ?? "Something went wrong. Try again."}
+        </p>
         {onRetry && (
           <p>
-            <button type="button" onClick={onRetry}>
+            <button type="button" className="btn-accent" onClick={onRetry}>
               Try again
             </button>
           </p>
@@ -137,7 +151,7 @@ export function AssetGrid({
         restoreFocusId={restoreFocusId}
         onRestoreFocusHandled={onRestoreFocusHandled}
       >
-        <p>Nothing matches these filters.</p>
+        <p className="empty__title">Nothing matches these filters</p>
         <p className="muted">
           Clear the search box or widen the status filter.
         </p>
@@ -371,10 +385,10 @@ function VirtualGrid({
         </div>
       )}
       {loadMoreError && (
-        <div className="grid-footer" role="alert">
+        <div className="grid-footer grid-footer--error" role="alert">
           <span>Couldn’t load more. {loadMoreError}</span>
           {onLoadMore && (
-            <button type="button" onClick={onLoadMore}>
+            <button type="button" className="btn-accent" onClick={onLoadMore}>
               Try again
             </button>
           )}

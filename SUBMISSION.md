@@ -104,18 +104,13 @@ Known gaps: the dialog is not a focus trap (Tab can leave — required). Off-scr
 
 ## Interface decisions
 
-Three or four sentences: what you were optimising for, and the decisions that
-follow from it. Then briefly:
+Optimising for all-day scanning in a hostile API: the grid has to stay quiet so name, status, and selection pop without chrome competing. A cool slate page wash with elevated white bars, one blue accent, and IBM Plex Sans (400/500/600) replace the wireframe system-ui stack. Spacing and radius live as `--space-*` / `--radius-*` on `:root` in `src/styles.css` — no one-off pixel soup. Initial load and detail fetch use skeleton cards (shimmer off under `prefers-reduced-motion`) so the layout doesn’t flash empty.
 
-- **Visual system.** Your colour, spacing and type decisions, and where they live.
-- **Status treatment.** How the four statuses read as a progression, and how they
-  stay distinguishable without relying on colour.
-- **States.** What you did with loading, empty, error, offline and partial
-  failure.
-- **Contrast.** What you checked against, and with what.
-- **Copy.** Any user-facing message you rewrote and why.
-
-Screenshots in the repo are welcome — link them here.
+- **Visual system.** Surfaces `--bg` / `--bg-soft` / `--bg-elevated`; ink `--ink` / `--ink-soft` / `--ink-muted`; accent `#1D4ED8` + `--accent-soft` for selection. Applied across topbar, filter chips, bulk strip, cards, and the detail sheet.
+- **Status treatment.** Draft (slate, round mark) → In review (amber, square mark) → Approved (green, check) → Archived (dashed, dash mark). The label is always visible; the mark is a second, non-colour channel.
+- **States.** Loading: 12-card skeleton + sr-only “Loading assets…”. Empty/error: titled panel + next action. Offline: warn banner. Partial bulk: warn/ok notice with Retry / Undo. Load-more stays a footer line, not a second skeleton.
+- **Contrast.** WCAG 2 relative-luminance (same formula as WebAIM). Body ink on white **15.8:1**, on slate wash **14.3:1**; `--ink-soft` **8.4 / 7.6**; muted meta **5.4 / 4.9**; white on accent **6.7**; pill text: draft **8.8**, in review **7.3**, approved **7.5**, archived **9.5**. All ≥ 4.5:1.
+- **Copy.** API strings stay behind `userMessage` (e.g. 429 → “The server is busy…”). Empty/error titles drop the trailing period and say what to do next.
 
 ---
 

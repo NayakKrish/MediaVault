@@ -114,7 +114,7 @@ export function App() {
       />
 
       {!online && (
-        <p className="banner" role="status" aria-live="polite">
+        <p className="banner banner--warn" role="status" aria-live="polite">
           You’re offline — updates are paused. We’ll retry when you’re back.
         </p>
       )}

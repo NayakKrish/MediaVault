@@ -26,7 +26,7 @@ export function BulkBar({
   if (loadedCount === 0) return null;
 
   return (
-    <div className="bulkbar">
+    <div className={"bulkbar" + (selectedCount > 0 ? " bulkbar--active" : "")}>
       <button
         type="button"
         onClick={onSelectAll}
@@ -36,13 +36,14 @@ export function BulkBar({
       </button>
       {selectedCount > 0 && (
         <>
-          <span>
+          <span className="bulkbar__count">
             {selectedCount} selected{busy ? " — updating…" : ""}
           </span>
           {STATUSES.map((s) => (
             <button
               key={s}
               type="button"
+              className="btn-accent"
               disabled={busy}
               onClick={() => onApply(s)}
             >
@@ -78,7 +79,13 @@ export function BulkNoticeBanner({
   const canUndo = Object.keys(notice.undoById).length > 0;
 
   return (
-    <div className="notice" role="status" aria-live="polite">
+    <div
+      className={
+        "notice" + (notice.failed > 0 ? " notice--warn" : " notice--ok")
+      }
+      role="status"
+      aria-live="polite"
+    >
       <p>
         {notice.applied === 0 && notice.failed === 0
           ? "Nothing to update."

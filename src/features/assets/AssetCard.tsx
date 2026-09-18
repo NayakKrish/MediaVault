@@ -68,7 +68,7 @@ export const AssetCard = memo(function AssetCard({
       <AssetThumb asset={asset} />
       <div className="card__body">
         <p className="card__name">{asset.name}</p>
-        <p className="muted">
+        <p className="card__meta">
           {asset.kind} · {formatBytes(asset.sizeBytes)} ·{" "}
           {formatDate(asset.updatedAt)}
         </p>

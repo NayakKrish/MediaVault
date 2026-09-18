@@ -13,6 +13,23 @@ import type { Asset, AssetStatus } from "@/lib/types";
 
 const STATUSES: AssetStatus[] = ["draft", "in_review", "approved", "archived"];
 
+function DetailSkeleton() {
+  return (
+    <div className="panel-skeleton" role="status" aria-live="polite">
+      <p className="sr-only">Loading asset…</p>
+      <div className="skeleton skeleton--thumb-lg" aria-hidden="true" />
+      <div className="skeleton skeleton--line skeleton--line-wide" aria-hidden="true" />
+      <div className="skeleton skeleton--line skeleton--line-mid" aria-hidden="true" />
+      <div className="skeleton-facts" aria-hidden="true">
+        <div className="skeleton skeleton--line" />
+        <div className="skeleton skeleton--line" />
+        <div className="skeleton skeleton--line" />
+        <div className="skeleton skeleton--line" />
+      </div>
+    </div>
+  );
+}
+
 interface Props {
   id: string;
   onClose: () => void;
@@ -108,8 +125,8 @@ export function AssetDetail({ id, onClose, onSaved }: Props) {
       </div>
 
       {error && <p className="error">{error}</p>}
-      {conflict && <p className="notice panel__notice">{conflict}</p>}
-      {!asset && !error && <p className="muted">Loading…</p>}
+      {conflict && <p className="notice notice--warn panel__notice">{conflict}</p>}
+      {!asset && !error && <DetailSkeleton />}
 
       {asset && (
         <div className="panel__body">
@@ -170,6 +187,7 @@ export function AssetDetail({ id, onClose, onSaved }: Props) {
               <button
                 key={status}
                 type="button"
+                className={`status-btn status-btn--${status}`}
                 disabled={saving || status === asset.status}
                 onClick={() => setStatus(status)}
               >
