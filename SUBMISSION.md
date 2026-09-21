@@ -6,19 +6,23 @@ chose not to do something.
 
 ## Video walkthrough
 
-Paste your Loom (or equivalent) link here. 5–10 minutes.
-
-**Link:**
+**Link:** <https://media-vault-indol.vercel.app/mediavalut.mp4>
 
 ---
 
 ## How to run it
 
-Anything we need to know beyond `npm install && npm run dev`.
+`npm install && npm run dev` is enough locally (Vite proxies `/api` to `server/` on :8787).
+
+The Vercel deploy is the Vite static build plus `api/[...path].mjs` — a production-only stand-in for the mock API so `/api/*` works without `server/index.mjs`. Seed data is imported from `server/data.mjs` (that folder is otherwise untouched). Nested routes need `vercel.json` because Vite on Vercel only matches one path segment for `api/[...path].mjs`. Reviewers can skip both files.
 
 ## Time spent
 
-Roughly, and how you split it.
+About 8 hours over three days, from the commit timestamps:
+
+- **17 Sep (~4.5h):** defect inventory, then search/URL/empty-vs-error (22:07), cursor pages + virtualization (22:44), optimistic bulk (23:08), retries/offline (23:21).
+- **18 Sep (~1h):** keyboard, focus restore, live regions (12:22), then the visual system and skeletons (12:52).
+- **21 Sep (~2.5h):** shift-click selection fix, walkthrough, Vercel `/api` stand-in, this write-up.
 
 ---
 
@@ -120,9 +124,16 @@ Offline writes are detected and surfaced, not queued. A write queue would need d
 
 ## Critique of the API
 
-What you would change about the backend contract, and what it forced you to do in
-the client that you would rather not have.
+**Two conflict models.** `PATCH` requires `version` and returns `409 version_conflict`. `POST /api/assets/bulk-status` takes no version and invents a random `conflict` (~7%). The detail panel therefore refetches on 409 (`AssetDetail.tsx`); bulk treats `conflict` as retryable with no refetch (`useBulkStatus.ts`). I would take optional `{id, version}` on bulk and return the same conflict code as PATCH.
+
+**`legal_hold` disagrees with itself.** Bulk fails every status change for `legal-hold`; PATCH only blocks archive. Retry therefore excludes all bulk `legal_hold`, while the panel can still move those rows to In review / Approved. One rule, please.
+
+**Opaque query-bound cursors.** Reusing a cursor after a filter or sort change is `400 stale_cursor`. The cursor never goes in the URL; `useAssets` drops it whenever the filter fingerprint changes so the user never sees that error. The server fingerprint also omits `limit`, so changing page size with the same cursor would skip or overlap — we stay at 50 to avoid that.
+
+**Rate limit counts retries; list cap is 50.** 12.4k rows is ~248 list calls plus ~6% `503`s. That forced the 300ms debounce, a refcounted GET map that shares the retry chain (`client.ts`), and skipping `/api/facets`, `/api/stats`, and `/api/events`. Keep 207 per-id results; add `retryable` on each failure so the client does not have to know that `legal_hold` is permanent and `conflict` is not. Same `too_many_ids` code for two caps (batch 25, unused here; bulk 50) — we chunk at 50 with concurrency 3.
 
 ## Anything you would like us to look at
 
-Code you are proud of, or a decision you are unsure about and want to discuss.
+Skip `api/[...path].mjs` and `vercel.json` — they are only so the Vercel static deploy has an API. Scoring should be `src/`.
+
+The walkthrough is at <https://media-vault-indol.vercel.app/mediavalut.mp4> (also linked at the top).
