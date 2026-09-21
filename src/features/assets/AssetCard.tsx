@@ -84,11 +84,9 @@ export const AssetCard = memo(function AssetCard({
         aria-label={`Select ${asset.name}`}
         onClick={(e) => {
           e.stopPropagation();
-          e.preventDefault();
-          onToggleSelect(asset.id, e.shiftKey);
         }}
-        onChange={() => {
-          /* selection is handled in onClick so shift-click can extend a range */
+        onChange={(e) => {
+          onToggleSelect(asset.id, (e.nativeEvent as MouseEvent).shiftKey);
         }}
       />
     </div>
